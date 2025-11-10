@@ -1,12 +1,12 @@
 {
-  "name": "youth-career-studio",
+  "name": "youth-career-experience", 
   "private": true,
   "scripts": {
     "dev": "next dev -p 3070",
     "build": "next build",
     "start": "next start -p 3070",
     "lint": "next lint",
-    "postbuild": "npx @open-next/cli@latest build"
+    "postbuild": "echo \"Next.js build successful. Skipping external CLI operations.\""
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -16,7 +16,7 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "zod": "3.23.8",
-    "zustand": "^5.0.8"
+    "zustand": "^5.0.8"   
   },
   "devDependencies": {
     "@eslint/js": "^9.38.0",

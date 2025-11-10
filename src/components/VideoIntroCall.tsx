@@ -1,8 +1,15 @@
 // [제목] 화상+자기소개서 화면 (상담사 인사 + 자기소개 멘트 연속 재생, 네비 복구) + 학년구분(초/중/고) 추가
+// src/components/VideoIntroCall.tsx
 'use client';
+
+
+
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+
+
+
 
 // ---- 상담사 멘트 사전 (존댓말, 부드러운 톤) -----------------
 const GREETINGS: Record<string, string> = {
@@ -14,6 +21,9 @@ const GREETINGS: Record<string, string> = {
   '간디': '간디 상담사입니다. 부드러운 마음으로 꾸준히 가면 길이 열립니다.',
 };
 
+
+
+
 // ---- TTS 공통(부드러운 톤) -----------------------------------
 function speakSoft(text: string) {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
@@ -22,20 +32,15 @@ function speakSoft(text: string) {
   u.rate = 0.95;
   u.pitch = 1.0;
   u.volume = 0.9;
-
-  // 보이스 목록이 늦게 로드되는 브라우저 대응
-  const setVoice = () => {
-    const ko = window.speechSynthesis.getVoices().find(v => v.lang?.startsWith('ko'));
-    if (ko) u.voice = ko;
-    window.speechSynthesis.cancel();     // ← 줄바꿈 없는 정확한 호출
-    window.speechSynthesis.speak(u);
-  };
-  if (window.speechSynthesis.getVoices().length) setVoice();
-  else {
-    const h = () => { setVoice(); window.speechSynthesis.removeEventListener('voiceschanged', h); };
-    window.speechSynthesis.addEventListener('voiceschanged', h);
-  }
+  // 가능한 한국어 보이스 선택
+  const ko = window.speechSynthesis.getVoices().find(v => v.lang.startsWith('ko'));
+  if (ko) u.voice = ko;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(u);
 }
+
+
+
 
 // 학년 숫자에서 대략 밴드 추정(없으면 고등)
 type Band = '초등학생' | '중학생' | '고등학생';
@@ -47,23 +52,15 @@ function inferBandFromGrade(gradeStr: string | null): Band {
   return '고등학생';
 }
 
-// 관심분야 → 실제 라우트 슬러그 (※ 기존 앱 라우트와 1:1 일치)
-const FIELD_SLUG: Record<string, string> = {
-  'AI·데이터': 'ai-data',
-  '소프트웨어·앱': 'software-app',
-  '로봇·메카트로닉스': 'robot-mechatronics',
-  '사이버보안': 'cyber-security',
-  '게임·메타버스': 'game-metaverse',
-  '의료·바이오': 'medical-bio',
-  '간호·재활': 'nursing-rehab',
-  '환경·에너지': 'env-energy',
-  '우주·항공': 'space-aero',
-  '자동차·모빌리티': 'mobility',
-};
+
+
 
 export default function VideoIntroCall() {
   const router = useRouter();
   const sp = useSearchParams();
+
+
+
 
   const counselor = (sp.get('counselor') ?? '상담사').trim();
   const name = sp.get('name') ?? '';
@@ -72,35 +69,46 @@ export default function VideoIntroCall() {
   const classroom = sp.get('classroom') ?? '';
   const goal = sp.get('goal') ?? '';
 
-  // ▶ level(초/중/고) 선택값 (URL 동기화)
+
+
+
+  // ▶ 추가: level(초/중/고) 선택값 (URL 동기화)
   const initialLevel = (sp.get('level') as Band) || inferBandFromGrade(grade);
   const [level, setLevel] = useState<Band>(initialLevel);
   const setLevelAndSync = (next: Band) => {
     setLevel(next);
     const params = new URLSearchParams(sp.toString());
     params.set('level', next);
-    router.replace(`?${params.toString()}`, { scroll: false }); // ← 줄바꿈 제거
+    router.replace(`?${params.toString()}`, { scroll: false });
   };
 
-  // ---- 좌측 비디오 -----------------------------------
+
+
+
+  // ---- 좌측 비디오 (그대로) -----------------------------------
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [camOn, setCamOn] = useState(false);
   const [micOn, setMicOn] = useState(true);
   const [err, setErr] = useState('');
+
+
+
 
   const openMedia = async () => {
     setErr('');
     try {
       const s = await navigator.mediaDevices.getUserMedia({
         video: true,
-        audio: micOn ? { echoCancellation: true, noiseSuppression: true, autoGainControl: false } : false,
+        audio: micOn
+          ? { echoCancellation: true, noiseSuppression: true, autoGainControl: false }
+          : false,
       });
       if (videoRef.current) {
         videoRef.current.srcObject = s;
         await videoRef.current.play().catch(() => {});
       }
       setCamOn(true);
-    } catch {
+    } catch (e) {
       setErr('카메라/마이크 접근이 거부되었습니다.');
       setCamOn(false);
     }
@@ -117,7 +125,10 @@ export default function VideoIntroCall() {
     setMicOn(v => !v);
   };
 
-  // ---- 인사+안내 멘트 1회 재생 -----------------------
+
+
+
+  // ---- 인사+안내 멘트 1회 재생 --------------------------------
   const greetingCombined = useMemo(() => {
     const g = GREETINGS[counselor] ?? `${counselor} 상담사입니다. 반갑습니다.`;
     const guide =
@@ -127,6 +138,9 @@ export default function VideoIntroCall() {
     return `${g} ${guide}`;
   }, [counselor]);
 
+
+
+
   useEffect(() => {
     const t = setTimeout(() => speakSoft(greetingCombined), 300);
     return () => {
@@ -135,7 +149,10 @@ export default function VideoIntroCall() {
     };
   }, [greetingCombined]);
 
-  // ---- 오른쪽 폼 --------------------------------------
+
+
+
+  // ---- 오른쪽 폼 (현행 유지) -----------------------------------
   const [form, setForm] = useState({
     name: name || '',
     school: school || '',
@@ -147,10 +164,16 @@ export default function VideoIntroCall() {
   const [openInterests, setOpenInterests] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+
+
+
   const interests = [
     'AI·데이터','소프트웨어·앱','로봇·메카트로닉스','사이버보안',
     '게임·메타버스','의료·바이오','간호·재활','환경·에너지','우주·항공','자동차·모빌리티',
   ];
+
+
+
 
   const onSubmit = () => {
     const { name, school, grade, classroom, interest, goal } = form;
@@ -161,6 +184,9 @@ export default function VideoIntroCall() {
     setSubmitted(true);
     speakSoft(`${name} 학생, 잘 입력하셨어요. 이제 직업체험을 시작해 볼게요.`);
   };
+
+
+
 
   const onStart = () => {
     if (!submitted) {
@@ -174,11 +200,27 @@ export default function VideoIntroCall() {
       grade: form.grade,
       classroom: form.classroom,
       goal: form.goal,
-      level, // 초/중/고
-      field: FIELD_SLUG[form.interest] || 'ai-data', // ← 라우트와 정확히 일치
+      // ▶ 추가: level 함께 전달
+      level,
+      field:
+        {
+          'AI·데이터': 'ai-data',
+          '소프트웨어·앱': 'software-app',
+          '로봇·메카트로닉스': 'robotics-mechatronics',
+          '사이버보안': 'cybersecurity',
+          '게임·메타버스': 'game-metaverse',
+          '의료·바이오': 'medical-bio',
+          '간호·재활': 'nursing-rehab',
+          '환경·에너지': 'environment-energy',
+          '우주·항공': 'space-aerospace',
+          '자동차·모빌리티': 'automotive-mobility',
+        }[form.interest] || '',
     }).toString();
     router.push(`/career/themes?${qs}`);
   };
+
+
+
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-6">
@@ -195,6 +237,9 @@ export default function VideoIntroCall() {
         </div>
       </div>
 
+
+
+
       <div className="grid lg:grid-cols-2 gap-6">
         {/* 왼쪽: 비디오 */}
         <div>
@@ -208,6 +253,9 @@ export default function VideoIntroCall() {
               </div>
             )}
           </div>
+
+
+
 
           {/* 하단 컨트롤 */}
           <div className="mt-3 flex items-center gap-3">
@@ -230,6 +278,9 @@ export default function VideoIntroCall() {
           </div>
         </div>
 
+
+
+
         {/* 오른쪽: 자기소개서 폼 */}
         <div className="border rounded-xl p-5 bg-white">
           <div className="flex justify-between items-center mb-3">
@@ -237,7 +288,10 @@ export default function VideoIntroCall() {
             <span className="text-xs font-semibold text-emerald-600">AI 실시간 상담</span>
           </div>
 
-          {/* ▶ 학년 구분(초/중/고) — URL 동기화 */}
+
+
+
+          {/* ▶ 추가: 학년 구분(초/중/고) — URL 동기화 */}
           <div className="mb-3">
             <div className="text-xs text-gray-500 mb-1">학년 구분</div>
             <div className="flex gap-2">
@@ -255,7 +309,10 @@ export default function VideoIntroCall() {
             </div>
           </div>
 
-          {/* 제출 후 요약 */}
+
+
+
+          {/* 제출 후 요약 (원본 그대로) */}
           {submitted && (
             <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
               <p className="font-bold mb-2">학생 자기소개서 요약</p>
@@ -268,13 +325,19 @@ export default function VideoIntroCall() {
             </div>
           )}
 
-          {/* 입력 폼 */}
+
+
+
+          {/* 입력 폼 (원본 그대로) */}
           <div className="grid grid-cols-2 gap-2">
             <input value={form.name} onChange={e=>setForm(v=>({...v,name:e.target.value}))} placeholder="이름" className="border px-3 py-2 rounded-md" />
             <input value={form.school} onChange={e=>setForm(v=>({...v,school:e.target.value}))} placeholder="학교명" className="border px-3 py-2 rounded-md" />
             <input value={form.grade} onChange={e=>setForm(v=>({...v,grade:e.target.value}))} placeholder="학년(숫자)" className="border px-3 py-2 rounded-md" />
             <input value={form.classroom} onChange={e=>setForm(v=>({...v,classroom:e.target.value}))} placeholder="반(숫자)" className="border px-3 py-2 rounded-md" />
           </div>
+
+
+
 
           <div className="mt-3">
             <button onClick={()=>setOpenInterests(o=>!o)} className="bg-blue-600 text-white text-sm px-3 py-2 rounded-md hover:bg-blue-700">
@@ -283,7 +346,10 @@ export default function VideoIntroCall() {
             <p className="text-sm text-gray-600 mt-1">선택됨: {form.interest || '없음'}</p>
             {openInterests && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
-                {interests.map(f=>(
+                {[
+                  'AI·데이터','소프트웨어·앱','로봇·메카트로닉스','사이버보안',
+                  '게임·메타버스','의료·바이오','간호·재활','환경·에너지','우주·항공','자동차·모빌리티',
+                ].map(f=>(
                   <button
                     key={f}
                     onClick={()=>{ setForm(v=>({...v,interest:f})); setOpenInterests(false); }}
@@ -295,6 +361,9 @@ export default function VideoIntroCall() {
             )}
           </div>
 
+
+
+
           <input
             value={form.goal}
             onChange={e=>setForm(v=>({...v,goal:e.target.value}))}
@@ -302,10 +371,16 @@ export default function VideoIntroCall() {
             className="w-full border rounded-md px-3 py-2 mt-3"
           />
 
+
+
+
           <div className="flex gap-2 mt-4">
             <button onClick={onSubmit} className="bg-gray-900 text-white px-4 py-2 rounded-md text-sm hover:bg-black">제출</button>
             <button onClick={onStart} className="bg-emerald-600 text-white px-4 py-2 rounded-md text-sm hover:bg-emerald-700">직업체험 시작 →</button>
           </div>
+
+
+
 
           <p className="mt-4 text-xs text-gray-500 border-t pt-3">
             ※ 이름, 학교, 학년, 반, 목표를 입력하고 ‘관심분야’를 선택한 후 ‘제출’을 누르세요.

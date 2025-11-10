@@ -1,15 +1,20 @@
-'use client';
+// ./src/app/(routes)/career/interests/page.tsx
+'use client'; // 클라이언트 훅(useState, useEffect, useRouter, useSearchParams)을 사용하므로 필수입니다.
 
-import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { FIELDS, type ThemeDef } from '@/lib/themes';
+import React, { Suspense, useEffect, useState } from 'react'; // Suspense를 추가로 import 합니다.
+import { useRouter, useSearchParams } from 'next/navigation'; // useRouter와 useSearchParams를 import 합니다.
+import { FIELDS, type ThemeDef } from '@/lib/themes'; // 기존 import 유지: FIELDS 데이터와 ThemeDef 타입
 
-export default function InterestsPage() {
-  const router = useRouter();
-  const sp = useSearchParams();
 
+// --- ⭐ InterestsContent 컴포넌트: useSearchParams 로직을 담을 내부 컴포넌트 ⭐ ---
+// 이 컴포넌트는 'useSearchParams'를 직접 호출하고, 그 결과에 따라 UI를 렌더링합니다.
+// 메인 InterestsPage 컴포넌트 내부에 정의하여 코드를 분리하지 않습니다.
+function InterestsContent() {
+  const router = useRouter(); // useRouter는 이곳에서 사용 가능합니다.
+  const sp = useSearchParams(); // ⚠️ useSearchParams()는 이제 여기서 호출됩니다!
+
+  // 기존 로직 그대로 유지: suggested, candidates 상태 관리
   const suggested = sp.get('s')?.split(',').map(s => s.trim()).filter(Boolean) || [];
-
   const [candidates, setCandidates] = useState<ThemeDef[]>([]);
 
   useEffect(() => {
@@ -20,9 +25,9 @@ export default function InterestsPage() {
       const shuffled = [...FIELDS].sort(() => Math.random() - 0.5);
       setCandidates(shuffled.slice(0, 3));
     }
-  }, [sp]);
+  }, [sp]); // sp가 변경될 때마다 useEffect 재실행 (의존성 배열에 sp 포함)
 
-  const goBack = () => router.push('/career/session');
+  const goBack = () => router.push('/career/session'); // 기존 goBack 함수 유지
 
   return (
     <main className="mx-auto max-w-6xl p-6">
@@ -67,5 +72,21 @@ export default function InterestsPage() {
         </button>
       </div>
     </main>
+  );
+}
+// --- ⭐ InterestsContent 컴포넌트 정의 끝 ⭐ ---
+
+
+// --- ⭐ 메인 InterestsPage 컴포넌트 ⭐ ---
+// 이 컴포넌트는 'useSearchParams'를 직접 호출하지 않고, InterestsContent를 <Suspense>로 감싸서 렌더링합니다.
+// 메인 페이지 컴포넌트는 최소한의 역할만 합니다.
+export default function InterestsPage() {
+  return (
+    // ⚠️ 중요: InterestsContent 컴포넌트를 <Suspense>로 감싸줍니다! ⚠️
+    // fallback에는 useSearchParams 데이터 로딩 중에 보여줄 간단한 UI를 넣어줍니다.
+    // 이 부분은 프리렌더링 시 Contents가 준비될 때까지 사용자에게 보여줄 내용입니다.
+    <Suspense fallback={<div>관심 분야 데이터를 불러오는 중...</div>}>
+      <InterestsContent />
+    </Suspense>
   );
 }
