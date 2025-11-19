@@ -1,14 +1,12 @@
-'use client';
-import Link from 'next/link';
-import StepProgress from '@/components/StepProgress';
+// src/app/(routes)/career/page.tsx
 
-export default function CareerHome() {
+import { Suspense } from 'react';
+import CareerClientPage from './CareerClientPage';
+
+export default function CareerPageWrapper() {
   return (
-    <div className="mx-auto max-w-2xl p-6 space-y-6">
-      <h1 className="text-2xl font-bold">청소년 진로체험</h1>
-      <p className="text-gray-600 text-sm">시작을 누르면 AI 상담사가 안내합니다.</p>
-      <StepProgress />
-      <Link href="/career/consultant" className="px-4 py-2 rounded bg-black text-white inline-block">시작</Link>
-    </div>
+    <Suspense fallback={<div>관심분야 정보를 불러오는 중...</div>}>
+      <CareerClientPage />
+    </Suspense>
   );
 }
