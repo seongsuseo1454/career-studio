@@ -1,12 +1,7 @@
-﻿// src/app/page.tsx
-'use client';
+﻿// src/app/page.tsx   ← 이 파일만 교체하면 끝!
+import { redirect } from 'next/navigation';
 
-import IdleMain from '@/components/IdleMain';
-
-export default function HomePage() {
-  return (
-    <div className="h-screen w-screen overflow-hidden">
-      <IdleMain />
-    </div>
-  );
+export default function Home() {
+  // 무조건 코드 입력 화면으로 강제 이동
+  redirect('/enter-code');
 }
